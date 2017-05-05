@@ -18,7 +18,9 @@ class PartyTests(unittest.TestCase):
     def test_no_rsvp_yet(self):
         # FIXME: Add a test to show we see the RSVP form, but NOT the
         # party details
-        print "FIXME"
+        result = self.client.get("/")
+        self.assertIn("\"field-name\">Name</", result.data)
+        self.assertNotIn("123 Magic Unicorn Way<br>", result.data)
 
     def test_rsvp(self):
         result = self.client.post("/rsvp",
@@ -27,10 +29,11 @@ class PartyTests(unittest.TestCase):
                                   follow_redirects=True)
         # FIXME: Once we RSVP, we should see the party details, but
         # not the RSVP form
-        print "FIXME"
+        self.assertNotIn("\"field-name\">Name</", result.data)
+        self.assertIn("123 Magic Unicorn Way<br>", result.data)
 
 
-class PartyTestsDatabase(unittest.TestCase):
+class PartyTestsDatabaseNotLoggedIn(unittest.TestCase):
     """Flask tests that use the database."""
 
     def setUp(self):
@@ -40,22 +43,58 @@ class PartyTestsDatabase(unittest.TestCase):
         app.config['TESTING'] = True
 
         # Connect to test database (uncomment when testing database)
-        # connect_to_db(app, "postgresql:///testdb")
+        connect_to_db(app, "postgresql:///testdb")
 
         # Create tables and add sample data (uncomment when testing database)
-        # db.create_all()
-        # example_data()
+        db.create_all()
+        example_data()
 
     def tearDown(self):
         """Do at end of every test."""
 
         # (uncomment when testing database)
-        # db.session.close()
-        # db.drop_all()
+        db.session.close()
+        db.drop_all()
 
     def test_games(self):
         #FIXME: test that the games page displays the game from example_data()
-        print "FIXME"
+        result = self.client.get("/games", follow_redirects=True)
+        self.assertIn("board games, rainbows, and ice cream", result.data)
+
+
+class PartyTestsDatabaseLoggedIn(unittest.TestCase):
+    """Flask tests that use the database with logged in user."""
+
+    def setUp(self):
+        """Stuff to do before every test."""
+
+        self.client = app.test_client()
+        app.config['TESTING'] = True
+        app.config['SECRET_KEY'] = 'key'
+        self.client = app.test_client()
+
+        with self.client as c:
+            with c.session_transaction() as sess:
+                sess['RSVP'] = True
+
+        # Connect to test database (uncomment when testing database)
+        connect_to_db(app, "postgresql:///testdb")
+
+        # Create tables and add sample data (uncomment when testing database)
+        db.create_all()
+        example_data()
+
+    def tearDown(self):
+        """Do at end of every test."""
+
+        # (uncomment when testing database)
+        db.session.close()
+        db.drop_all()
+
+    def test_games_logged_in(self):
+        #FIXME: test that the games page displays the game from example_data()
+        result = self.client.get("/games")
+        self.assertIn("Guessing Game", result.data)
 
 
 if __name__ == "__main__":
